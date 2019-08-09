@@ -1,0 +1,10 @@
+{
+  "instance": "$INSTANCE",
+  "username": "$USERNAME",
+  "private_key": "$PRIVATE_KEY",
+  "rules": [
+    { "remotePort": 18888, "localHost": "127.0.0.1", "localPort": 8888 },
+    { "remotePort": 11433, "localHost": "192.168.238.102", "localPort": 1433 },
+    { "remotePort": 11521, "localHost": "192.168.238.2", "localPort": 1521 }
+  ]
+}
