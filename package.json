@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "replace-config": "node replace-config.js"
+    "replace-config": "node replace-config.js",
+    "build": "pkg index.js"
   },
   "author": "",
   "license": "ISC",

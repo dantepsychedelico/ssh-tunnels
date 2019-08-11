@@ -93,15 +93,19 @@ class Ssh {
 }
 
 (async function main() {
-  let config = new Config();
-  let remote_conf = await config.getBucketConfig();
-  const { username, private_key, rules } = remote_conf;
-  let ip = await config.getVmIp(remote_conf.zone, remote_conf.instance_name);
-  let closed_count = 0;
-  rules.map((rule) => {
-    let _ssh = new Ssh({ ip, username, private_key }, rule)
-    _ssh.conn.on('close', () => {
-      closed_count += 1;
+  try {
+    let config = new Config();
+    let remote_conf = await config.getBucketConfig();
+    const { username, private_key, rules } = remote_conf;
+    let ip = await config.getVmIp(remote_conf.zone, remote_conf.instance_name);
+    let closed_count = 0;
+    rules.map((rule) => {
+      let _ssh = new Ssh({ ip, username, private_key }, rule)
+      _ssh.conn.on('close', () => {
+        closed_count += 1;
+      });
     });
-  });
+  } catch(err) {
+    console.log(err);
+  }
 })();

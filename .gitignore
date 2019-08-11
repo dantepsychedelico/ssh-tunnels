@@ -89,3 +89,4 @@ typings/
 
 cert/
 config.json
+tmp/

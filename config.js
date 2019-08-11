@@ -24,7 +24,13 @@ class Config {
     throw new Error('not found remote config');
   }
   async getVmIp(zone, instance_name) {
-    const compute = new Compute();
+    const compute = new Compute({
+      projectId: gcp_sa_keys.project_id,
+      credentials: {
+        client_email: gcp_sa_keys.client_email,
+        private_key: gcp_sa_keys.private_key
+      }
+    });
     const compute_zone = compute.zone(zone);
     const vm = compute_zone.vm(instance_name);
     let [ metadata ] = await vm.getMetadata();
