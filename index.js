@@ -2,30 +2,30 @@
 
 const util = require('util');
 const osLogin = require('@google-cloud/os-login');
-const gcp_sa_keys = require('./gcp-sa.json');
+const gcp_sa_keys = require('./cert/gcp-sa.json');
 
 const net = require('net');
 const { Client } = require('ssh2');
-const fs = require('fs');
-const path = require('path');
-const config = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'config.json'), {encoding: 'utf8'}));
+
+const { Config } = require('./config');
 
 const privateKey = `$PRIVATE_KEY`;
 
 class Ssh {
-  constructor(config) {
+  constructor(ssh_config, rule) {
+    const { ip, username, private_key } = ssh_config;
     this.conn = new Client();
     this.conn.on('ready', () => {
       console.log('Client :: ready');
-      this.forwardIn(config);
+      this.forwardIn(rule);
     })
     .on('tcp connection', (info, accept, reject) => {
       console.log('TCP :: INCOMING CONNECTION:');
       console.dir(info);
       let channel;
       let client = net.createConnection({
-          host: config.localHost, 
-          port: config.localPort }, () => {
+          host: rule.localHost, 
+          port: rule.localPort }, () => {
             console.log('connected to server!');
             channel = accept()
             .on('close', function() {
@@ -53,46 +53,55 @@ class Ssh {
         console.log('[Forward END]');
       });
     })
-    .on('error', () => {
-      console.log('[SSH ERR]', arguments);
+    .on('error', (err) => {
+      console.log('[SSH ERR]', err);
     })
     .on('end', () => {
       console.log('[SSH END]');
     })
     .on('close', () => {
       console.log('[SSH CLOSE]');
-      setTimeout(() => {
-        new Ssh(config);
-      }, 1000);
     })
     .connect({
-      host: '$HOST_IP',
+      host: ip,
       port: 443,
-      username: '$USERNAME',
-      privateKey: privateKey,
+      username: username,
+      privateKey: private_key,
       keepaliveInterval: 10000
     });
   }
-  forwardIn(config) {
-    this.conn.forwardIn('0.0.0.0', config.remotePort, (err) => {
-      console.log(`connect forwardIn ${config.remotePort}`);
+  forwardIn(rule) {
+    this.conn.forwardIn('0.0.0.0', rule.remotePort, (err) => {
+      console.log(`connect forwardIn ${rule.remotePort}`);
       if (err) {
         console.log(err);
-        this.conn.exec(`kill $(netstat -t4lnp | grep "${config.remotePort}" | grep -o "[0-9]*/sshd" | grep -o "[0-9]*")`, (err, stream) => {
+        this.conn.exec(`kill $(netstat -t4lnp | grep "${rule.remotePort}" | grep -o "[0-9]*/sshd" | grep -o "[0-9]*")`, (err, stream) => {
           if (err) console.log(err);
           stream.on('data', (data) => {
             console.log(data.toString('utf8'));
           }).on('close', () => {
             setTimeout(()=> {
-              this.forwardIn(config);
+              this.forwardIn(rule);
             }, 1000);
           });
         })
       } else {
-        console.log(`Listening for connections on server on port ${config.remotePort}!`);
+        console.log(`Listening for connections on server on port ${rule.remotePort}!`);
       }
     });
   }
 }
 
-config.rules.map((conf) => new Ssh(conf));
+(async function main() {
+  let config = new Config();
+  let remote_conf = await config.getBucketConfig();
+  const { username, private_key, rules } = remote_conf;
+  let ip = await config.getVmIp(remote_conf.zone, remote_conf.instance_name);
+  let closed_count = 0;
+  rules.map((rule) => {
+    let _ssh = new Ssh({ ip, username, private_key }, rule)
+    _ssh.conn.on('close', () => {
+      closed_count += 1;
+    });
+  });
+})();

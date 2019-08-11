@@ -24,6 +24,7 @@ create_vm() {
         --no-service-account --no-scopes \
         --metadata=enable-oslogin=TRUE \
         --labels=app=$INSTANCE_NAME
+    zone=asia-east1-a instance_name=$INSTANCE_NAME npm run replace-config -- config-tpl.json
 }
 
 create_service_account() {
@@ -65,10 +66,13 @@ upload_config_to_bucket() {
 attach_bucket_permission() {
     gsutil bucketpolicyonly set on gs://$BUCKET_NAME
     gsutil iam ch serviceAccount:$SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com:roles/storage.objectViewer gs://$BUCKET_NAME
+    echo "$(cat cert/gcp-sa.json | jq '. += {"bucket_name": "zac-chung-dev-ssh-tunnels"}')" > cert/gcp-sa.json
 }
 
 create_ssh_key_for_service_account() {
     ssh-keygen -N '' -f cert/id_rsa
     gcloud compute os-login ssh-keys add --key-file=cert/id_rsa.pub \
         --account=$SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com
+    username="$(gcloud compute os-login describe-profile --format=json | jq '.posixAccounts[0].username' | sed 's/"//g')" \
+        private_key="$(cat cert/id_rsa)" npm run replace-config -- config.json
 }
