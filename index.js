@@ -1,5 +1,6 @@
 'use strict';
 
+const EventEmitter = require('events');
 const util = require('util');
 const osLogin = require('@google-cloud/os-login');
 const gcp_sa_keys = require('./cert/gcp-sa.json');
@@ -83,6 +84,8 @@ class Ssh {
             setTimeout(()=> {
               this.forwardIn(rule);
             }, 1000);
+          }).on('error', (err) => {
+            console.log(err);
           });
         })
       } else {
@@ -92,20 +95,33 @@ class Ssh {
   }
 }
 
-(async function main() {
+const event = new EventEmitter();
+event
+.on('start', async (wait_time) => {
+  setTimeout(() => {
+    main();
+  }, wait_time);
+});
+
+async function main() {
   try {
     let config = new Config();
     let remote_conf = await config.getBucketConfig();
-    const { username, private_key, rules } = remote_conf;
-    let ip = await config.getVmIp(remote_conf.zone, remote_conf.instance_name);
+    const { username, private_key, rules, zone, instance_name } = remote_conf;
+    let ip = await config.getVmIp(zone, instance_name);
     let closed_count = 0;
     rules.map((rule) => {
       let _ssh = new Ssh({ ip, username, private_key }, rule)
       _ssh.conn.on('close', () => {
         closed_count += 1;
+        if (closed_count === rules.length) {
+          event.emit('start', 1000);
+        }
       });
     });
   } catch(err) {
     console.log(err);
   }
-})();
+}
+
+event.emit('start', 0);
