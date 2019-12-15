@@ -60,13 +60,13 @@ create_service_account_keys() {
 }
 
 upload_config_to_bucket() {
-    gsutil cp cert/config.json gs://$BUCKET_NAME
+    gsutil cp config.json gs://$BUCKET_NAME
 }
 
 attach_bucket_permission() {
     gsutil bucketpolicyonly set on gs://$BUCKET_NAME
     gsutil iam ch serviceAccount:$SERVICE_ACCOUNT@$PROJECT_ID.iam.gserviceaccount.com:roles/storage.objectViewer gs://$BUCKET_NAME
-    echo "$(cat cert/gcp-sa.json | jq '. += {"bucket_name": "zac-chung-dev-ssh-tunnels"}')" > cert/gcp-sa.json
+    echo "$(cat cert/gcp-sa.json | jq '. += {"bucket_name": "'$BUCKET_NAME'"}')" > cert/gcp-sa.json
 }
 
 create_ssh_key_for_service_account() {

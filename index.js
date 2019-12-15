@@ -1,14 +1,12 @@
 'use strict';
 
 const EventEmitter = require('events');
-const util = require('util');
 const osLogin = require('@google-cloud/os-login');
-const gcp_sa_keys = require('./cert/gcp-sa.json');
 
 const net = require('net');
 const { Client } = require('ssh2');
 
-const { Config } = require('./config');
+const { Config } = require('./config.js');
 
 const privateKey = `$PRIVATE_KEY`;
 
@@ -106,7 +104,7 @@ event
 async function main() {
   try {
     let config = new Config();
-    let remote_conf = await config.getBucketConfig();
+    let remote_conf = await config.getConfig();
     const { username, private_key, rules, zone, instance_name } = remote_conf;
     let ip = await config.getVmIp(zone, instance_name);
     let closed_count = 0;
